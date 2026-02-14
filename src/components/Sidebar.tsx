@@ -1,7 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "react-aria-components";
-import { supabase } from "@/lib/supabase";
+import {
+  useTimeboxesForDateRange,
+  useCreateTimebox,
+} from "@/hooks/useTimeboxes";
+import { useCreateNote } from "@/hooks/useNotes";
 
 interface SidebarProps {
   selectedDate: string;
@@ -18,110 +22,105 @@ interface DateNode {
 
 export function Sidebar({ selectedDate, onDateSelect }: SidebarProps) {
   const { user } = useAuth();
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(new Set());
-  const [dateTree, setDateTree] = useState<DateNode[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  const loadDateTree = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      setLoading(true);
-
-      // Load timeboxes for the next 3 months
-      const startDate = new Date();
-      const endDate = new Date();
-      endDate.setMonth(endDate.getMonth() + 3);
-
-      const { data: timeboxes, error } = await supabase
-        .from("timeboxes")
-        .select("date, note_id")
-        .eq("user_id", user.id)
-        .gte("date", startDate.toISOString().split("T")[0])
-        .lte("date", endDate.toISOString().split("T")[0]);
-
-      if (error) throw error;
-
-      // Group timeboxes by date
-      const dateCount: Record<string, number> = {};
-      timeboxes?.forEach((timebox) => {
-        dateCount[timebox.date] = (dateCount[timebox.date] || 0) + 1;
-      });
-
-      // Build tree structure
-      const tree = buildDateTree(startDate, endDate, dateCount);
-      setDateTree(tree);
-    } catch (error) {
-      console.error("Error loading date tree:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    loadDateTree();
-  }, [loadDateTree]);
-
-  useEffect(() => {
-    // Auto-expand to current date
+  // Initialize expanded nodes to include current date
+  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(() => {
     const today = new Date();
     const year = today.getFullYear().toString();
     const month = `${year}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-    setExpandedNodes(new Set([year, month]));
+    return new Set([year, month]);
+  });
+
+  // Calculate date range (next 3 months) - memoize to prevent recreation
+  const { startDate, endDate } = useMemo(() => {
+    const start = new Date();
+    const end = new Date();
+    end.setMonth(end.getMonth() + 3);
+    return {
+      startDate: start.toISOString().split("T")[0],
+      endDate: end.toISOString().split("T")[0],
+    };
   }, []);
 
-  const buildDateTree = (
-    startDate: Date,
-    endDate: Date,
-    dateCount: Record<string, number>,
-  ): DateNode[] => {
-    const tree: DateNode[] = [];
-    const current = new Date(startDate);
+  const { data: timeboxes = [], isLoading } = useTimeboxesForDateRange(
+    user?.id || "",
+    startDate,
+    endDate,
+  );
 
-    while (current <= endDate) {
-      const year = current.getFullYear().toString();
-      const monthNum = current.getMonth();
-      const monthKey = `${year}-${String(monthNum + 1).padStart(2, "0")}`;
-      const monthLabel = current.toLocaleDateString("en-US", { month: "long" });
-      const dateKey = current.toISOString().split("T")[0];
-      const dateLabel = current.toLocaleDateString("en-US", {
-        day: "numeric",
-        weekday: "short",
-      });
+  const createNoteMutation = useCreateNote();
+  const createTimeboxMutation = useCreateTimebox();
 
-      // Find or create year node
-      let yearNode = tree.find((n) => n.value === year);
-      if (!yearNode) {
-        yearNode = { type: "year", value: year, label: year, children: [] };
-        tree.push(yearNode);
+  const buildDateTree = useCallback(
+    (
+      startDateStr: string,
+      endDateStr: string,
+      dateCount: Record<string, number>,
+    ): DateNode[] => {
+      const tree: DateNode[] = [];
+      const current = new Date(startDateStr);
+      const end = new Date(endDateStr);
+
+      while (current <= end) {
+        const year = current.getFullYear().toString();
+        const monthNum = current.getMonth();
+        const monthKey = `${year}-${String(monthNum + 1).padStart(2, "0")}`;
+        const monthLabel = current.toLocaleDateString("en-US", {
+          month: "long",
+        });
+        const dateKey = current.toISOString().split("T")[0];
+        const dateLabel = current.toLocaleDateString("en-US", {
+          day: "numeric",
+          weekday: "short",
+        });
+
+        // Find or create year node
+        let yearNode = tree.find((n) => n.value === year);
+        if (!yearNode) {
+          yearNode = { type: "year", value: year, label: year, children: [] };
+          tree.push(yearNode);
+        }
+
+        // Find or create month node
+        let monthNode = yearNode.children?.find((n) => n.value === monthKey);
+        if (!monthNode) {
+          monthNode = {
+            type: "month",
+            value: monthKey,
+            label: monthLabel,
+            children: [],
+          };
+          yearNode.children?.push(monthNode);
+        }
+
+        // Add date node
+        const count = dateCount[dateKey] || 0;
+        monthNode.children?.push({
+          type: "date",
+          value: dateKey,
+          label: dateLabel,
+          count,
+        });
+
+        current.setDate(current.getDate() + 1);
       }
 
-      // Find or create month node
-      let monthNode = yearNode.children?.find((n) => n.value === monthKey);
-      if (!monthNode) {
-        monthNode = {
-          type: "month",
-          value: monthKey,
-          label: monthLabel,
-          children: [],
-        };
-        yearNode.children?.push(monthNode);
-      }
+      return tree;
+    },
+    [],
+  );
 
-      // Add date node
-      const count = dateCount[dateKey] || 0;
-      monthNode.children?.push({
-        type: "date",
-        value: dateKey,
-        label: dateLabel,
-        count,
-      });
+  // Build date tree from timeboxes data
+  const dateTree = useMemo(() => {
+    // Group timeboxes by date
+    const dateCount: Record<string, number> = {};
+    timeboxes.forEach((timebox) => {
+      dateCount[timebox.date] = (dateCount[timebox.date] || 0) + 1;
+    });
 
-      current.setDate(current.getDate() + 1);
-    }
-
-    return tree;
-  };
+    // Build tree structure
+    return buildDateTree(startDate, endDate, dateCount);
+  }, [timeboxes, startDate, endDate, buildDateTree]);
 
   const toggleNode = (nodeValue: string) => {
     setExpandedNodes((prev) => {
@@ -144,31 +143,20 @@ export function Sidebar({ selectedDate, onDateSelect }: SidebarProps) {
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowDate = tomorrow.toISOString().split("T")[0];
 
-      const { data: note, error: noteError } = await supabase
-        .from("notes")
-        .insert({
-          user_id: user.id,
-          title: "New Note",
-          content: "",
-        })
-        .select()
-        .single();
-
-      if (noteError) throw noteError;
+      const note = await createNoteMutation.mutateAsync({
+        user_id: user.id,
+        title: "New Note",
+        content: "",
+      });
 
       // Create a default timebox for the note (9 AM - 10 AM)
-      const { error: timeboxError } = await supabase.from("timeboxes").insert({
+      await createTimeboxMutation.mutateAsync({
         user_id: user.id,
         note_id: note.id,
         date: selectedDate || tomorrowDate,
         start_time: "09:00:00",
         end_time: "10:00:00",
       });
-
-      if (timeboxError) throw timeboxError;
-
-      // Reload the tree
-      await loadDateTree();
 
       // Select the date where the note was created
       onDateSelect(selectedDate || tomorrowDate);
@@ -255,7 +243,7 @@ export function Sidebar({ selectedDate, onDateSelect }: SidebarProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4">
-        {loading ? (
+        {isLoading ? (
           <p className="text-center text-gray-500 dark:text-gray-400">
             Loading...
           </p>

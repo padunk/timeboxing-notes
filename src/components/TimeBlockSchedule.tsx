@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   DndContext,
@@ -8,23 +8,23 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
-import { supabase } from "@/lib/supabase";
-import type { Timebox, Note } from "@/lib/supabase";
+import { useTimeboxes, useUpdateTimebox } from "@/hooks/useTimeboxes";
 import { TimeboxCard } from "./TimeboxCard";
 
 interface TimeBlockScheduleProps {
   selectedDate: string;
 }
 
-interface TimeboxWithNote extends Timebox {
-  note: Note;
-}
-
 export function TimeBlockSchedule({ selectedDate }: TimeBlockScheduleProps) {
   const { user } = useAuth();
-  const [timeboxes, setTimeboxes] = useState<TimeboxWithNote[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  const { data: timeboxes = [], isLoading } = useTimeboxes({
+    userId: user?.id || "",
+    date: selectedDate,
+  });
+
+  const updateTimeboxMutation = useUpdateTimebox();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -36,37 +36,6 @@ export function TimeBlockSchedule({ selectedDate }: TimeBlockScheduleProps) {
 
   // Hours from 6 AM to 10 PM
   const hours = Array.from({ length: 17 }, (_, i) => i + 6);
-
-  const loadTimeboxes = useCallback(async () => {
-    if (!user?.id) return;
-
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from("timeboxes")
-        .select(
-          `
-          *,
-          note:notes(*)
-        `,
-        )
-        .eq("user_id", user.id)
-        .eq("date", selectedDate)
-        .order("start_time");
-
-      if (error) throw error;
-
-      setTimeboxes((data as TimeboxWithNote[]) || []);
-    } catch (error) {
-      console.error("Error loading timeboxes:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [user, selectedDate]);
-
-  useEffect(() => {
-    loadTimeboxes();
-  }, [loadTimeboxes]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(String(event.active.id));
@@ -104,19 +73,12 @@ export function TimeBlockSchedule({ selectedDate }: TimeBlockScheduleProps) {
       const newStartTime = `${String(Math.floor(newStartMinutes / 60)).padStart(2, "0")}:${String(newStartMinutes % 60).padStart(2, "0")}:00`;
       const newEndTime = `${String(Math.floor(newEndMinutes / 60)).padStart(2, "0")}:${String(newEndMinutes % 60).padStart(2, "0")}:00`;
 
-      // Update in database
-      const { error } = await supabase
-        .from("timeboxes")
-        .update({
-          start_time: newStartTime,
-          end_time: newEndTime,
-        })
-        .eq("id", timebox.id);
-
-      if (error) throw error;
-
-      // Reload timeboxes
-      await loadTimeboxes();
+      // Update using mutation
+      await updateTimeboxMutation.mutateAsync({
+        id: timebox.id,
+        start_time: newStartTime,
+        end_time: newEndTime,
+      });
     } catch (error) {
       console.error("Error updating timebox:", error);
     }
@@ -140,7 +102,7 @@ export function TimeBlockSchedule({ selectedDate }: TimeBlockScheduleProps) {
 
   const activeTimebox = timeboxes.find((t) => t.id === activeId);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
         <p className="text-center text-gray-500 dark:text-gray-400">
