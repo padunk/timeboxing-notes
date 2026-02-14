@@ -4,8 +4,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "react-aria-components";
 import { useNote } from "@/hooks/useNotes";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { NoteEditor } from "@/components/NoteEditor";
 import { LoadingSkeleton } from "@/components/LoadingSkeleton";
+import { NoteDetailsContent } from "@/components/NoteDetailsContent";
 
 export function NoteDetailsPage() {
   const { id } = useParams<{ id: string }>();
@@ -50,16 +50,4 @@ export function NoteDetailsPage() {
       </main>
     </div>
   );
-}
-
-function NoteDetailsContent({ notePromise }: { notePromise: Promise<any> }) {
-  const note = use(notePromise);
-  const navigate = useNavigate();
-
-  if (!note) {
-    navigate("/dashboard");
-    return null;
-  }
-
-  return <NoteEditor note={note} />;
 }
