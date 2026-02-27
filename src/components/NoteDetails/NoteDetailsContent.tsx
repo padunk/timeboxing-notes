@@ -1,6 +1,6 @@
 import { use } from "react";
 import { useNavigate } from "react-router-dom";
-import { NoteEditor } from "./NoteEditor";
+import { NoteEditor } from "../NoteEditor";
 
 export function NoteDetailsContent({
   notePromise,

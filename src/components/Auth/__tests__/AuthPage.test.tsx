@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { AuthPage } from "./AuthPage";
+import { AuthScreen } from "../AuthScreen";
 
 // ---- Mocks ----
 
@@ -34,17 +34,17 @@ vi.mock("@/contexts/AuthContext", () => ({
 
 // ---- Helpers ----
 
-function renderAuthPage() {
+function renderAuthScreen() {
   return render(
     <MemoryRouter initialEntries={["/auth"]}>
-      <AuthPage />
+      <AuthScreen />
     </MemoryRouter>,
   );
 }
 
 // ---- Tests ----
 
-describe("AuthPage", () => {
+describe("AuthScreen", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUser = null;
@@ -56,7 +56,7 @@ describe("AuthPage", () => {
   // ---------- Rendering ----------
 
   it("renders the Sign In form by default", () => {
-    renderAuthPage();
+    renderAuthScreen();
     expect(
       screen.getByRole("heading", { name: /sign in/i }),
     ).toBeInTheDocument();
@@ -69,7 +69,7 @@ describe("AuthPage", () => {
 
   it("toggles to Sign Up form", async () => {
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.click(
       screen.getByRole("button", { name: /don't have an account/i }),
@@ -85,7 +85,7 @@ describe("AuthPage", () => {
 
   it("toggles back to Sign In from Sign Up", async () => {
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.click(
       screen.getByRole("button", { name: /don't have an account/i }),
@@ -100,7 +100,7 @@ describe("AuthPage", () => {
   });
 
   it("shows Google sign-in button", () => {
-    renderAuthPage();
+    renderAuthScreen();
     expect(
       screen.getByRole("button", { name: /continue with google/i }),
     ).toBeInTheDocument();
@@ -110,7 +110,7 @@ describe("AuthPage", () => {
 
   it("redirects authenticated users to dashboard", () => {
     mockUser = { id: "1", email: "test@example.com" };
-    renderAuthPage();
+    renderAuthScreen();
 
     expect(mockNavigate).toHaveBeenCalledWith("/dashboard", { replace: true });
   });
@@ -119,7 +119,7 @@ describe("AuthPage", () => {
 
   it("signs in successfully with valid credentials", async () => {
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
     await user.type(screen.getByLabelText(/password/i), "password123");
@@ -141,7 +141,7 @@ describe("AuthPage", () => {
     });
 
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
     await user.type(screen.getByLabelText(/password/i), "wrongpassword");
@@ -156,7 +156,7 @@ describe("AuthPage", () => {
 
   it("does NOT enforce password complexity on login", async () => {
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     // Simple password with no uppercase, numbers, or symbols
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
@@ -175,7 +175,7 @@ describe("AuthPage", () => {
 
   it("signs up successfully with valid data", async () => {
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.click(
       screen.getByRole("button", { name: /don't have an account/i }),
@@ -202,7 +202,7 @@ describe("AuthPage", () => {
     });
 
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.click(
       screen.getByRole("button", { name: /don't have an account/i }),
@@ -222,7 +222,7 @@ describe("AuthPage", () => {
 
   it("shows email validation error for invalid email on sign-up", async () => {
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.click(
       screen.getByRole("button", { name: /don't have an account/i }),
@@ -239,7 +239,7 @@ describe("AuthPage", () => {
 
   it("shows password validation errors for weak password on sign-up", async () => {
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.click(
       screen.getByRole("button", { name: /don't have an account/i }),
@@ -258,7 +258,7 @@ describe("AuthPage", () => {
 
   it("shows password missing uppercase error on sign-up", async () => {
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.click(
       screen.getByRole("button", { name: /don't have an account/i }),
@@ -278,7 +278,7 @@ describe("AuthPage", () => {
 
   it("initiates Google sign-in", async () => {
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.click(
       screen.getByRole("button", { name: /continue with google/i }),
@@ -300,7 +300,7 @@ describe("AuthPage", () => {
     });
 
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.click(
       screen.getByRole("button", { name: /continue with google/i }),
@@ -315,7 +315,7 @@ describe("AuthPage", () => {
 
   it("has aria-invalid and aria-describedby on email field when validation fails", async () => {
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.click(
       screen.getByRole("button", { name: /don't have an account/i }),
@@ -333,7 +333,7 @@ describe("AuthPage", () => {
 
   it("success message uses role=status", async () => {
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.click(
       screen.getByRole("button", { name: /don't have an account/i }),
@@ -354,7 +354,7 @@ describe("AuthPage", () => {
     mockSignInWithPassword.mockImplementation(() => new Promise(() => {}));
 
     const user = userEvent.setup();
-    renderAuthPage();
+    renderAuthScreen();
 
     await user.type(screen.getByLabelText(/email/i), "test@example.com");
     await user.type(screen.getByLabelText(/password/i), "password123");
