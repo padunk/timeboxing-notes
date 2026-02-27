@@ -86,3 +86,47 @@ CREATE TRIGGER update_notes_updated_at BEFORE UPDATE ON notes
 
 CREATE TRIGGER update_timeboxes_updated_at BEFORE UPDATE ON timeboxes
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Subscriptions table (Lemon Squeezy integration)
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  lemon_squeezy_id TEXT,            -- Lemon Squeezy subscription ID
+  order_id TEXT,                     -- Lemon Squeezy order ID
+  customer_id TEXT,                  -- Lemon Squeezy customer ID
+  product_id TEXT,                   -- Lemon Squeezy product ID
+  variant_id TEXT,                   -- Lemon Squeezy variant ID
+  plan TEXT NOT NULL DEFAULT 'free', -- 'free' | 'pro'
+  status TEXT NOT NULL DEFAULT 'active', -- 'active' | 'cancelled' | 'expired' | 'past_due' | 'paused' | 'on_trial' | 'unpaid'
+  card_brand TEXT,
+  card_last_four TEXT,
+  renews_at TIMESTAMP WITH TIME ZONE,
+  ends_at TIMESTAMP WITH TIME ZONE,
+  trial_ends_at TIMESTAMP WITH TIME ZONE,
+  update_payment_method_url TEXT,    -- Customer-facing URL to update payment
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(user_id)
+);
+
+-- Indexes for subscriptions
+CREATE INDEX IF NOT EXISTS subscriptions_user_id_idx ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS subscriptions_lemon_squeezy_id_idx ON subscriptions(lemon_squeezy_id);
+
+-- RLS for subscriptions
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view their own subscription"
+  ON subscriptions FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Only the webhook (service role) can insert/update/delete subscriptions
+-- Users should NOT be able to modify their own subscription directly
+CREATE POLICY "Service role can manage subscriptions"
+  ON subscriptions FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- Trigger for updated_at
+CREATE TRIGGER update_subscriptions_updated_at BEFORE UPDATE ON subscriptions
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();

@@ -27,3 +27,30 @@ export interface Timebox {
   end_time: string;
   date: string;
 }
+
+export interface Subscription {
+  id: string;
+  user_id: string;
+  lemon_squeezy_id: string | null;
+  order_id: string | null;
+  customer_id: string | null;
+  product_id: string | null;
+  variant_id: string | null;
+  plan: "free" | "pro";
+  status:
+    | "active"
+    | "cancelled"
+    | "expired"
+    | "past_due"
+    | "paused"
+    | "on_trial"
+    | "unpaid";
+  card_brand: string | null;
+  card_last_four: string | null;
+  renews_at: string | null;
+  ends_at: string | null;
+  trial_ends_at: string | null;
+  update_payment_method_url: string | null;
+  created_at: string;
+  updated_at: string;
+}

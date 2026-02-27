@@ -22,6 +22,12 @@ export function LandingScreen() {
         <div className="flex items-center gap-4">
           <ThemeToggle />
           <Button
+            onPress={() => navigate("/pricing")}
+            className="px-6 py-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white font-medium transition-colors"
+          >
+            Pricing
+          </Button>
+          <Button
             onPress={() => navigate(user ? "/dashboard" : "/auth")}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
           >
@@ -45,7 +51,7 @@ export function LandingScreen() {
           onPress={() => navigate(user ? "/dashboard" : "/auth")}
           className="px-8 py-4 bg-blue-600 hover:bg-blue-700 text-white text-lg font-semibold rounded-lg transition-colors shadow-lg"
         >
-          {user ? "Go to Dashboard" : "Start Free Today"}
+          {user ? "Go to Dashboard" : "Get Started"}
         </Button>
       </section>
 
@@ -188,7 +194,7 @@ export function LandingScreen() {
           Ready to Get Organized?
         </h2>
         <p className="text-xl text-gray-600 dark:text-gray-300 mb-8">
-          Start timeboxing your notes today. It's free to get started.
+          Start timeboxing your notes today and boost your productivity.
         </p>
         <Button
           onPress={() => navigate(user ? "/dashboard" : "/auth")}

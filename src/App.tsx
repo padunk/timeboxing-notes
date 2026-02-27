@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { LandingPage } from "@/pages/LandingPage";
 import { AuthPage } from "@/pages/AuthPage";
+import { PricingPage } from "@/pages/PricingPage";
 import { DashboardPage } from "@/pages/DashboardPage";
 import { NoteDetailsPage } from "@/pages/NoteDetailsPage";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
@@ -12,6 +13,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/auth" element={<AuthPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
         <Route
           path="/dashboard"
           element={
