@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Tiptap Editor Styles */
 .ProseMirror {
   outline: none;
