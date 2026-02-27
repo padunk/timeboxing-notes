@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import type { SubmitEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button, TextField, Label, Input } from "react-aria-components";
 import { z } from "zod";
 
@@ -96,6 +96,12 @@ export function AuthScreen() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
+          <Link
+            to="/"
+            className="block text-center mb-4 text-lg font-semibold text-blue-600 dark:text-blue-400 hover:underline"
+          >
+            Timeboxing Notes
+          </Link>
           <h1 className="text-2xl font-bold text-center mb-6 text-gray-900 dark:text-white">
             {isLogin ? "Sign In" : "Sign Up"}
           </h1>
