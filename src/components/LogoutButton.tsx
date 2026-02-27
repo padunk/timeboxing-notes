@@ -6,8 +6,8 @@ export function LogoutButton() {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
     navigate("/");
+    await supabase.auth.signOut();
   };
 
   return (
