@@ -2,6 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "react-aria-components";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Clock, Pencil, BarChart3, PlayCircle } from "lucide-react";
 
 export function LandingScreen() {
   const navigate = useNavigate();
@@ -64,19 +65,7 @@ export function LandingScreen() {
           {/* Feature 1 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
             <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-4">
-              <svg
-                className="w-6 h-6 text-blue-600 dark:text-blue-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+              <Clock className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
               Visual Timeboxing
@@ -90,19 +79,7 @@ export function LandingScreen() {
           {/* Feature 2 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
             <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mb-4">
-              <svg
-                className="w-6 h-6 text-green-600 dark:text-green-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                />
-              </svg>
+              <Pencil className="w-6 h-6 text-green-600 dark:text-green-400" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
               Rich Note-Taking
@@ -116,19 +93,7 @@ export function LandingScreen() {
           {/* Feature 3 */}
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-md">
             <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-4">
-              <svg
-                className="w-6 h-6 text-purple-600 dark:text-purple-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                />
-              </svg>
+              <BarChart3 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
             </div>
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
               Track Progress
@@ -151,25 +116,7 @@ export function LandingScreen() {
             {/* Placeholder for video embed - replace with actual YouTube/Vimeo URL */}
             <div className="w-full h-full flex items-center justify-center">
               <div className="text-center">
-                <svg
-                  className="w-20 h-20 mx-auto text-gray-400 dark:text-gray-500 mb-4"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <PlayCircle className="w-20 h-20 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
                 <p className="text-gray-600 dark:text-gray-400">
                   Demo video coming soon
                 </p>

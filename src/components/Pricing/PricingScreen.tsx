@@ -1,8 +1,38 @@
 import { useNavigate } from "react-router-dom";
-import { Button } from "react-aria-components";
+import {
+  Button,
+  Disclosure,
+  DisclosureGroup,
+  DisclosurePanel,
+  Heading,
+} from "react-aria-components";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { Check, ChevronDown } from "lucide-react";
+
+const FAQ_ITEMS = [
+  {
+    id: "cancel",
+    q: "Can I cancel anytime?",
+    a: "Yes! You can cancel your subscription at any time. You'll continue to have access until the end of your billing period.",
+  },
+  {
+    id: "payment",
+    q: "What payment methods do you accept?",
+    a: "We accept all major credit cards, PayPal, and Apple Pay through our payment partner Lemon Squeezy.",
+  },
+  {
+    id: "trial",
+    q: "Is there a free trial?",
+    a: "We don't offer a free trial at this time, but you can cancel anytime within your billing period.",
+  },
+  {
+    id: "data",
+    q: "What happens to my data if I cancel?",
+    a: "Your data is never deleted. If you resubscribe later, everything will be right where you left it.",
+  },
+];
 
 const CHECKOUT_URL = import.meta.env.VITE_LEMONSQUEEZY_CHECKOUT_URL;
 
@@ -69,12 +99,12 @@ export function PricingScreen() {
         <div className="max-w-lg mx-auto">
           {/* Pro Plan */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg border-2 border-blue-600 relative">
-            <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-              {/* <span className="bg-blue-600 text-white text-sm font-semibold px-4 py-1 rounded-full">
+            {/* <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+              <span className="bg-blue-600 text-white text-sm font-semibold px-4 py-1 rounded-full">
                 Most Popular
-              </span> */}
+              </span>
             </div>
-            {/* <h3 className="text-lg font-semibold text-blue-600 uppercase tracking-wide mb-2">
+            <h3 className="text-lg font-semibold text-blue-600 uppercase tracking-wide mb-2">
               Pro
             </h3> */}
             <div className="flex items-baseline gap-1 mb-6">
@@ -100,19 +130,7 @@ export function PricingScreen() {
                   key={feature}
                   className="flex items-center gap-3 text-gray-700 dark:text-gray-300"
                 >
-                  <svg
-                    className="w-5 h-5 text-blue-500 shrink-0"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M5 13l4 4L19 7"
-                    />
-                  </svg>
+                  <Check className="w-5 h-5 text-blue-500 shrink-0" />
                   {feature}
                 </li>
               ))}
@@ -150,36 +168,28 @@ export function PricingScreen() {
         <h2 className="text-3xl font-bold text-center text-gray-900 dark:text-white mb-12">
           Frequently Asked Questions
         </h2>
-        <div className="space-y-6">
-          {[
-            {
-              q: "Can I cancel anytime?",
-              a: "Yes! You can cancel your subscription at any time. You'll continue to have access until the end of your billing period.",
-            },
-            {
-              q: "What payment methods do you accept?",
-              a: "We accept all major credit cards, PayPal, and Apple Pay through our payment partner Lemon Squeezy.",
-            },
-            {
-              q: "Is there a free trial?",
-              a: "We don't offer a free trial at this time, but you can cancel anytime within your billing period.",
-            },
-            {
-              q: "What happens to my data if I cancel?",
-              a: "Your data is never deleted. If you resubscribe later, everything will be right where you left it.",
-            },
-          ].map(({ q, a }) => (
-            <div
-              key={q}
-              className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700"
+        <DisclosureGroup allowsMultipleExpanded className="space-y-4">
+          {FAQ_ITEMS.map(({ id, q, a }) => (
+            <Disclosure
+              key={id}
+              id={id}
+              className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-800 group"
             >
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                {q}
-              </h3>
-              <p className="text-gray-600 dark:text-gray-300">{a}</p>
-            </div>
+              <Heading level={3}>
+                <Button
+                  slot="trigger"
+                  className="flex w-full items-center justify-between px-6 py-4 text-left text-lg font-semibold text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors cursor-pointer"
+                >
+                  <span>{q}</span>
+                  <ChevronDown className="w-5 h-5 text-gray-500 dark:text-gray-400 transition-transform duration-200 group-data-expanded:rotate-180 shrink-0 ml-4" />
+                </Button>
+              </Heading>
+              <DisclosurePanel className="px-6 text-gray-600 dark:text-gray-300">
+                <div className="py-4">{a}</div>
+              </DisclosurePanel>
+            </Disclosure>
           ))}
-        </div>
+        </DisclosureGroup>
       </section>
 
       {/* Footer */}
