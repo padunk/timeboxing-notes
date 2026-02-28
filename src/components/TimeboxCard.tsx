@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, type CSSProperties } from "react";
 import { useDraggable } from "@dnd-kit/core";
+import { useNavigate } from "react-router-dom";
 import { X, GripHorizontal } from "lucide-react";
 import type { Timebox, Note } from "@/lib/supabase";
 import { useDeleteNote } from "@/hooks/useNotes";
@@ -36,6 +37,7 @@ const minutesToTimeString = (totalMinutes: number) => {
 };
 
 export function TimeboxCard({ timebox, style, onResize }: TimeboxCardProps) {
+  const navigate = useNavigate();
   const deleteNoteMutation = useDeleteNote();
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -177,11 +179,24 @@ export function TimeboxCard({ timebox, style, onResize }: TimeboxCardProps) {
       </div>
 
       {/* Card content */}
-      <div className="px-3 py-2 flex flex-col h-full min-h-0 overflow-hidden">
+      <div
+        className="px-3 py-2 flex flex-col h-full min-h-0 overflow-hidden"
+        role="button"
+        onClick={() => {
+          if (!isDragging && !isResizing) {
+            navigate(`/notes/${timebox.note_id}`);
+          }
+        }}
+      >
         <div className="flex items-start justify-between gap-1">
-          <p className="font-medium text-blue-900 dark:text-blue-100 truncate text-sm flex-1">
-            {timebox.note.title || "Untitled Note"}
-          </p>
+          <div className="flex flex-row gap-2">
+            <p className="font-medium text-blue-900 dark:text-blue-100 truncate text-sm flex-1">
+              {timebox.note.title || "Untitled Note"}
+            </p>
+            <p className="text-xs text-blue-700 dark:text-blue-300 mt-auto">
+              {formatMinutes(liveStart)} – {formatMinutes(liveEnd)}
+            </p>
+          </div>
           <button
             className="p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-blue-200 dark:hover:bg-blue-700 text-blue-500 dark:text-blue-300 transition-opacity shrink-0"
             onClick={(e) => {
@@ -197,9 +212,6 @@ export function TimeboxCard({ timebox, style, onResize }: TimeboxCardProps) {
             <X className="w-3 h-3" />
           </button>
         </div>
-        <p className="text-xs text-blue-700 dark:text-blue-300 mt-auto">
-          {formatMinutes(liveStart)} – {formatMinutes(liveEnd)}
-        </p>
       </div>
 
       {/* Bottom resize handle */}
