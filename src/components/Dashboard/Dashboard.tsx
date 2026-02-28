@@ -14,6 +14,7 @@ import {
 } from "@dnd-kit/core";
 import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
 import { useCreateTimebox } from "@/hooks/useTimeboxes";
+import { useCreateNote } from "@/hooks/useNotes";
 import type { Note } from "@/lib/supabase";
 import { Menu } from "lucide-react";
 
@@ -28,6 +29,7 @@ export function DashboardScreen() {
   const [activeDragNote, setActiveDragNote] = useState<Note | null>(null);
 
   const createTimeboxMutation = useCreateTimebox();
+  const createNoteMutation = useCreateNote();
 
   const userName = user?.email?.split("@")[0] || "User";
 
@@ -42,6 +44,26 @@ export function DashboardScreen() {
   const handleDateSelect = (date: string) => {
     setSelectedDate(date);
     navigate(`/dashboard/${date}`);
+  };
+
+  const handleDragCreate = async (startTime: string, endTime: string) => {
+    if (!user?.id) return;
+    try {
+      const note = await createNoteMutation.mutateAsync({
+        user_id: user.id,
+        title: "New Note",
+        content: "",
+      });
+      await createTimeboxMutation.mutateAsync({
+        user_id: user.id,
+        note_id: note.id,
+        date: selectedDate,
+        start_time: startTime,
+        end_time: endTime,
+      });
+    } catch (error) {
+      console.error("Error creating timebox from drag:", error);
+    }
   };
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -179,7 +201,10 @@ export function DashboardScreen() {
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}
             >
-              <TimeBlockSchedule selectedDate={selectedDate} />
+              <TimeBlockSchedule
+                selectedDate={selectedDate}
+                onCreateTimebox={handleDragCreate}
+              />
 
               <DragOverlay>
                 {activeDragNote && (

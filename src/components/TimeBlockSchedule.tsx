@@ -1,3 +1,4 @@
+import { useRef, useState, useCallback } from "react";
 import { useDroppable, useDndMonitor } from "@dnd-kit/core";
 import type { DragEndEvent } from "@dnd-kit/core";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,11 +21,57 @@ function HourSlot({ hour }: HourSlotProps) {
   );
 }
 
+// --- Drag-to-create constants & helpers ---
+const SCHEDULE_START_MINUTES = 6 * 60; // 6 AM
+const SCHEDULE_END_MINUTES = 22 * 60; // 10 PM
+const PIXELS_PER_HOUR = 80;
+const PIXELS_PER_MINUTE = PIXELS_PER_HOUR / 60;
+const SNAP_MINUTES = 15;
+const MIN_DURATION_MINUTES = 15;
+
+const snapTo15 = (minutes: number) =>
+  Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
+
+const clampMinutes = (minutes: number) =>
+  Math.max(SCHEDULE_START_MINUTES, Math.min(SCHEDULE_END_MINUTES, minutes));
+
+const minutesToTimeString = (totalMinutes: number) => {
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}:00`;
+};
+
+const formatMinutesDisplay = (totalMinutes: number) => {
+  const hour = Math.floor(totalMinutes / 60);
+  const minute = totalMinutes % 60;
+  const period = hour >= 12 ? "PM" : "AM";
+  const displayHour = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour;
+  return `${displayHour}:${String(minute).padStart(2, "0")} ${period}`;
+};
+
+const hasOverlap = (
+  startMinutes: number,
+  endMinutes: number,
+  existingTimeboxes: Array<{ start_time: string; end_time: string }>,
+) => {
+  return existingTimeboxes.some((tb) => {
+    const [sh, sm] = tb.start_time.split(":").map(Number);
+    const [eh, em] = tb.end_time.split(":").map(Number);
+    const tbStart = sh * 60 + sm;
+    const tbEnd = eh * 60 + em;
+    return startMinutes < tbEnd && endMinutes > tbStart;
+  });
+};
+
 interface TimeBlockScheduleProps {
   selectedDate: string;
+  onCreateTimebox?: (startTime: string, endTime: string) => void;
 }
 
-export function TimeBlockSchedule({ selectedDate }: TimeBlockScheduleProps) {
+export function TimeBlockSchedule({
+  selectedDate,
+  onCreateTimebox,
+}: TimeBlockScheduleProps) {
   const { user } = useAuth();
 
   const { data: timeboxes = [], isLoading } = useTimeboxes({
@@ -36,6 +83,73 @@ export function TimeBlockSchedule({ selectedDate }: TimeBlockScheduleProps) {
 
   // Hours from 6 AM to 10 PM
   const hours = Array.from({ length: 17 }, (_, i) => i + 6);
+
+  // --- Drag-to-create state ---
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [isDragCreating, setIsDragCreating] = useState(false);
+  const [dragStartMinutes, setDragStartMinutes] = useState(0);
+  const [dragCurrentMinutes, setDragCurrentMinutes] = useState(0);
+
+  const yToMinutes = useCallback((clientY: number) => {
+    if (!gridRef.current) return SCHEDULE_START_MINUTES;
+    const rect = gridRef.current.getBoundingClientRect();
+    const y = clientY - rect.top;
+    const rawMinutes = SCHEDULE_START_MINUTES + y / PIXELS_PER_MINUTE;
+    return clampMinutes(snapTo15(rawMinutes));
+  }, []);
+
+  const handleGridPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      // Only primary button
+      if (e.button !== 0) return;
+      // Don't trigger if clicking on a timebox card
+      if ((e.target as HTMLElement).closest("[data-timebox-card]")) return;
+
+      const minutes = yToMinutes(e.clientY);
+      setIsDragCreating(true);
+      setDragStartMinutes(minutes);
+      setDragCurrentMinutes(minutes);
+      e.currentTarget.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    },
+    [yToMinutes],
+  );
+
+  const handleGridPointerMove = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isDragCreating) return;
+      setDragCurrentMinutes(yToMinutes(e.clientY));
+    },
+    [isDragCreating, yToMinutes],
+  );
+
+  const handleGridPointerUp = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
+      if (!isDragCreating) return;
+      setIsDragCreating(false);
+
+      const finalMinutes = yToMinutes(e.clientY);
+      let rangeStart = Math.min(dragStartMinutes, finalMinutes);
+      let rangeEnd = Math.max(dragStartMinutes, finalMinutes);
+
+      // Enforce minimum duration
+      if (rangeEnd - rangeStart < MIN_DURATION_MINUTES) {
+        rangeEnd = rangeStart + MIN_DURATION_MINUTES;
+        if (rangeEnd > SCHEDULE_END_MINUTES) {
+          rangeEnd = SCHEDULE_END_MINUTES;
+          rangeStart = rangeEnd - MIN_DURATION_MINUTES;
+        }
+      }
+
+      // Check overlap
+      if (hasOverlap(rangeStart, rangeEnd, timeboxes)) return;
+
+      const startTime = minutesToTimeString(rangeStart);
+      const endTime = minutesToTimeString(rangeEnd);
+      onCreateTimebox?.(startTime, endTime);
+    },
+    [isDragCreating, dragStartMinutes, yToMinutes, timeboxes, onCreateTimebox],
+  );
 
   useDndMonitor({
     onDragEnd(event: DragEndEvent) {
@@ -100,6 +214,17 @@ export function TimeBlockSchedule({ selectedDate }: TimeBlockScheduleProps) {
     return { top, height };
   };
 
+  const handleResize = useCallback(
+    (id: string, startTime: string, endTime: string) => {
+      updateTimeboxMutation
+        .mutateAsync({ id, start_time: startTime, end_time: endTime })
+        .catch((error) => {
+          console.error("Error resizing timebox:", error);
+        });
+    },
+    [updateTimeboxMutation],
+  );
+
   if (isLoading) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-8">
@@ -150,7 +275,16 @@ export function TimeBlockSchedule({ selectedDate }: TimeBlockScheduleProps) {
           </div>
 
           {/* Hour grid */}
-          <div className="relative">
+          <div
+            ref={gridRef}
+            className={`relative ${
+              isDragCreating ? "select-none" : "cursor-crosshair"
+            }`}
+            style={isDragCreating ? { touchAction: "none" } : undefined}
+            onPointerDown={handleGridPointerDown}
+            onPointerMove={handleGridPointerMove}
+            onPointerUp={handleGridPointerUp}
+          >
             {hours.map((hour) => (
               <HourSlot key={hour} hour={hour} />
             ))}
@@ -165,6 +299,7 @@ export function TimeBlockSchedule({ selectedDate }: TimeBlockScheduleProps) {
                 <TimeboxCard
                   key={timebox.id}
                   timebox={timebox}
+                  onResize={handleResize}
                   style={{
                     position: "absolute",
                     top: `${top}px`,
@@ -175,6 +310,46 @@ export function TimeBlockSchedule({ selectedDate }: TimeBlockScheduleProps) {
                 />
               );
             })}
+
+            {/* Drag-to-create preview overlay */}
+            {isDragCreating &&
+              (() => {
+                const rangeStart = Math.min(
+                  dragStartMinutes,
+                  dragCurrentMinutes,
+                );
+                let rangeEnd = Math.max(dragStartMinutes, dragCurrentMinutes);
+                if (rangeEnd - rangeStart < MIN_DURATION_MINUTES) {
+                  rangeEnd = rangeStart + MIN_DURATION_MINUTES;
+                }
+                const overlapping = hasOverlap(rangeStart, rangeEnd, timeboxes);
+                const top =
+                  (rangeStart - SCHEDULE_START_MINUTES) * PIXELS_PER_MINUTE;
+                const height = (rangeEnd - rangeStart) * PIXELS_PER_MINUTE;
+
+                return (
+                  <div
+                    className={`absolute left-2 right-2 rounded-lg border-2 border-dashed flex items-center justify-center pointer-events-none z-10 transition-colors ${
+                      overlapping
+                        ? "bg-red-400/30 border-red-500"
+                        : "bg-blue-400/30 border-blue-500"
+                    }`}
+                    style={{ top: `${top}px`, height: `${height}px` }}
+                  >
+                    <span
+                      className={`text-sm font-medium ${
+                        overlapping
+                          ? "text-red-700 dark:text-red-300"
+                          : "text-blue-700 dark:text-blue-300"
+                      }`}
+                    >
+                      {formatMinutesDisplay(rangeStart)} –{" "}
+                      {formatMinutesDisplay(rangeEnd)}
+                      {overlapping && " (overlap)"}
+                    </span>
+                  </div>
+                );
+              })()}
           </div>
         </div>
       </div>
