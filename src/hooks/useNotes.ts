@@ -60,6 +60,25 @@ export function useCreateNote() {
   });
 }
 
+// Fetch all notes for a user
+export function useNotesList(userId: string | undefined) {
+  return useQuery({
+    queryKey: ["notes", "list", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("notes")
+        .select("*")
+        .eq("user_id", userId!)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      return data as Note[];
+    },
+    enabled: !!userId,
+  });
+}
+
 // Update note mutation
 export function useUpdateNote() {
   const queryClient = useQueryClient();
@@ -86,6 +105,27 @@ export function useUpdateNote() {
       queryClient.setQueryData(["note", data.id], data);
       // Invalidate notes list if needed
       queryClient.invalidateQueries({ queryKey: ["notes"] });
+    },
+  });
+}
+
+// Delete note mutation (cascade deletes all timeboxes via FK)
+export function useDeleteNote() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, userId }: { id: string; userId: string }) => {
+      const { error } = await supabase
+        .from("notes")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", userId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+      queryClient.invalidateQueries({ queryKey: ["timeboxes"] });
     },
   });
 }

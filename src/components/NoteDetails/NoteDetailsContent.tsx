@@ -1,13 +1,8 @@
-import { use } from "react";
 import { useNavigate } from "react-router-dom";
 import { NoteEditor } from "../NoteEditor";
+import type { Note } from "@/lib/supabase";
 
-export function NoteDetailsContent({
-  notePromise,
-}: {
-  notePromise: Promise<any>;
-}) {
-  const note = use(notePromise);
+export function NoteDetailsContent({ note }: { note: Note }) {
   const navigate = useNavigate();
 
   if (!note) {

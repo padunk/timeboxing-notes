@@ -101,6 +101,22 @@ export function useUpdateTimebox() {
   });
 }
 
+// Delete timebox mutation
+export function useDeleteTimebox() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("timeboxes").delete().eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["timeboxes"] });
+    },
+  });
+}
+
 // Create timebox mutation
 export function useCreateTimebox() {
   const queryClient = useQueryClient();

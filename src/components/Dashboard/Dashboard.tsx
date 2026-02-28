@@ -5,6 +5,16 @@ import { Sidebar } from "@/components/Sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { LogoutButton } from "@/components/LogoutButton";
 import { TimeBlockSchedule } from "@/components/TimeBlockSchedule";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import type { DragEndEvent, DragStartEvent } from "@dnd-kit/core";
+import { useCreateTimebox } from "@/hooks/useTimeboxes";
+import type { Note } from "@/lib/supabase";
 import { Menu } from "lucide-react";
 
 export function DashboardScreen() {
@@ -15,12 +25,58 @@ export function DashboardScreen() {
   const [selectedDate, setSelectedDate] = useState<string>(
     urlDate || new Date().toISOString().split("T")[0],
   );
+  const [activeDragNote, setActiveDragNote] = useState<Note | null>(null);
+
+  const createTimeboxMutation = useCreateTimebox();
 
   const userName = user?.email?.split("@")[0] || "User";
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+  );
 
   const handleDateSelect = (date: string) => {
     setSelectedDate(date);
     navigate(`/dashboard/${date}`);
+  };
+
+  const handleDragStart = (event: DragStartEvent) => {
+    if (event.active.data.current?.type === "note") {
+      setActiveDragNote(event.active.data.current.note as Note);
+    }
+  };
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveDragNote(null);
+
+    if (
+      active.data.current?.type === "note" &&
+      over?.id &&
+      String(over.id).startsWith("slot-")
+    ) {
+      const hour = parseInt(String(over.id).replace("slot-", ""), 10);
+      const note = active.data.current.note as Note;
+
+      if (!user?.id) return;
+
+      const endHour = hour + 1;
+      await createTimeboxMutation
+        .mutateAsync({
+          user_id: user.id,
+          note_id: note.id,
+          date: selectedDate,
+          start_time: `${String(hour).padStart(2, "0")}:00:00`,
+          end_time: `${String(endHour).padStart(2, "0")}:00:00`,
+        })
+        .catch((error) => {
+          console.error("Error creating timebox:", error);
+        });
+    }
   };
 
   return (
@@ -118,8 +174,21 @@ export function DashboardScreen() {
               </div>
             </div>
 
-            {/* Placeholder for TimeBlockSchedule component */}
-            <TimeBlockSchedule selectedDate={selectedDate} />
+            <DndContext
+              sensors={sensors}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <TimeBlockSchedule selectedDate={selectedDate} />
+
+              <DragOverlay>
+                {activeDragNote && (
+                  <div className="px-3 py-2 bg-white dark:bg-gray-700 border border-blue-400 dark:border-blue-500 rounded-lg text-sm font-medium text-gray-800 dark:text-gray-200 shadow-lg opacity-90 pointer-events-none">
+                    {activeDragNote.title || "Untitled Note"}
+                  </div>
+                )}
+              </DragOverlay>
+            </DndContext>
           </div>
         </main>
       </div>
