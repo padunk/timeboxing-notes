@@ -74,7 +74,7 @@ export function useTimeboxesForDateRange(
   });
 }
 
-// Update timebox mutation
+// Update timebox mutation with optimistic updates for instant drag/resize feedback
 export function useUpdateTimebox() {
   const queryClient = useQueryClient();
 
@@ -94,8 +94,36 @@ export function useUpdateTimebox() {
 
       return data;
     },
-    onSuccess: () => {
-      // Invalidate all timebox queries to refetch
+    onMutate: async ({ id, start_time, end_time }) => {
+      // Cancel any outgoing refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ["timeboxes"] });
+
+      // Snapshot all timebox queries so we can rollback on error
+      const previousQueries = queryClient.getQueriesData<TimeboxWithNote[]>({
+        queryKey: ["timeboxes"],
+      });
+
+      // Optimistically update every matching cache entry
+      queryClient.setQueriesData<TimeboxWithNote[]>(
+        { queryKey: ["timeboxes"] },
+        (old) =>
+          old?.map((tb) =>
+            tb.id === id ? { ...tb, start_time, end_time } : tb,
+          ),
+      );
+
+      return { previousQueries };
+    },
+    onError: (_err, _vars, context) => {
+      // Rollback to the previous cache state on failure
+      if (context?.previousQueries) {
+        for (const [queryKey, data] of context.previousQueries) {
+          queryClient.setQueryData(queryKey, data);
+        }
+      }
+    },
+    onSettled: () => {
+      // Always refetch after mutation to sync with server
       queryClient.invalidateQueries({ queryKey: ["timeboxes"] });
     },
   });

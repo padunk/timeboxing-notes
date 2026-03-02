@@ -78,3 +78,92 @@
   padding: 0;
   color: inherit;
 }
+
+/* ── React Big Calendar — dark mode overrides ── */
+.dark .rbc-wrapper .rbc-time-view,
+.dark .rbc-wrapper .rbc-time-header,
+.dark .rbc-wrapper .rbc-time-content {
+  background-color: #1f2937; /* gray-800 */
+  border-color: #374151; /* gray-700 */
+}
+
+.dark .rbc-wrapper .rbc-time-header-content,
+.dark .rbc-wrapper .rbc-header {
+  border-color: #374151;
+  color: #d1d5db; /* gray-300 */
+}
+
+.dark .rbc-wrapper .rbc-label {
+  color: #9ca3af; /* gray-400 */
+}
+
+.dark .rbc-wrapper .rbc-day-slot .rbc-time-slot {
+  border-color: #374151;
+}
+
+.dark .rbc-wrapper .rbc-timeslot-group {
+  border-color: #374151;
+  min-height: 60px;
+}
+
+.dark .rbc-wrapper .rbc-current-time-indicator {
+  background-color: #ef4444; /* red-500 */
+}
+
+.dark .rbc-wrapper .rbc-today {
+  background-color: #1f2937;
+}
+
+/* Event styling in dark mode */
+.dark .rbc-wrapper .rbc-event {
+  background-color: #1e3a5f;
+  border-color: #1d4ed8;
+  color: #dbeafe;
+}
+
+.dark .rbc-wrapper .rbc-event.rbc-selected {
+  background-color: #1e40af;
+}
+
+/* Slot selection (drag-to-create) */
+.dark .rbc-wrapper .rbc-slot-selection {
+  background-color: rgba(59, 130, 246, 0.3);
+  border: 2px dashed #3b82f6;
+}
+
+/* Addons drag-and-drop preview */
+.dark .rbc-wrapper .rbc-addons-dnd .rbc-addons-dnd-resize-ns-icon {
+  border-color: #93c5fd;
+}
+
+/* Time gutter (left column) */
+.dark .rbc-wrapper .rbc-time-gutter .rbc-timeslot-group {
+  border-color: #374151;
+}
+
+.dark .rbc-wrapper .rbc-allday-cell {
+  background-color: #1f2937;
+  border-color: #374151;
+}
+
+/* Override RBC's default event colors with Tailwind-friendly blue */
+.rbc-wrapper .rbc-event {
+  background-color: #dbeafe; /* blue-100 */
+  border: 1px solid #93c5fd; /* blue-300 */
+  color: #1e3a5f; /* blue-900 */
+  border-radius: 0.5rem;
+}
+
+.rbc-wrapper .rbc-event.rbc-selected {
+  background-color: #bfdbfe; /* blue-200 */
+}
+
+.rbc-wrapper .rbc-event-label {
+  display: none; /* we show time in our custom event component */
+}
+
+.rbc-wrapper .rbc-slot-selection {
+  background-color: rgba(59, 130, 246, 0.2);
+  border: 2px dashed #3b82f6;
+  border-radius: 0.5rem;
+}
