@@ -164,36 +164,6 @@ export function DashboardScreen() {
                   day: "numeric",
                 })}
               </h2>
-              <div className="flex gap-2">
-                <button
-                  onClick={() =>
-                    handleDateSelect(new Date().toISOString().split("T")[0])
-                  }
-                  className="px-4 py-2 text-sm bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
-                >
-                  Today
-                </button>
-                <button
-                  onClick={() => {
-                    const tomorrow = new Date();
-                    tomorrow.setDate(tomorrow.getDate() + 1);
-                    handleDateSelect(tomorrow.toISOString().split("T")[0]);
-                  }}
-                  className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                >
-                  Tomorrow
-                </button>
-                <button
-                  onClick={() => {
-                    const nextWeek = new Date();
-                    nextWeek.setDate(nextWeek.getDate() + 7);
-                    handleDateSelect(nextWeek.toISOString().split("T")[0]);
-                  }}
-                  className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-                >
-                  Next Week
-                </button>
-              </div>
             </div>
 
             <DndContext

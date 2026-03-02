@@ -1,145 +1,97 @@
-import { useState, useMemo, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { Button } from "react-aria-components";
+import {
+  Button,
+  Calendar,
+  CalendarGrid,
+  CalendarGridHeader,
+  CalendarGridBody,
+  CalendarHeaderCell,
+  CalendarCell,
+  Heading,
+} from "react-aria-components";
+import {
+  today,
+  getLocalTimeZone,
+  parseDate,
+  startOfMonth,
+  endOfMonth,
+} from "@internationalized/date";
+import type { CalendarDate } from "@internationalized/date";
 import {
   useTimeboxesForDateRange,
   useCreateTimebox,
 } from "@/hooks/useTimeboxes";
 import { useCreateNote } from "@/hooks/useNotes";
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 interface SidebarProps {
   selectedDate: string;
   onDateSelect: (date: string) => void;
 }
 
-interface DateNode {
-  type: "year" | "month" | "date";
-  value: string;
-  label: string;
-  count?: number;
-  children?: DateNode[];
-}
-
 export function Sidebar({ selectedDate, onDateSelect }: SidebarProps) {
   const { user } = useAuth();
+  const todayDate = today(getLocalTimeZone());
 
-  // Initialize expanded nodes to include current date
-  const [expandedNodes, setExpandedNodes] = useState<Set<string>>(() => {
-    const today = new Date();
-    const year = today.getFullYear().toString();
-    const month = `${year}-${String(today.getMonth() + 1).padStart(2, "0")}`;
-    return new Set([year, month]);
+  // Track the currently focused/visible month for fetching timebox indicators
+  const [focusedDate, setFocusedDate] = useState<CalendarDate>(() => {
+    try {
+      return parseDate(selectedDate);
+    } catch {
+      return todayDate;
+    }
   });
 
-  // Calculate date range (next 3 months) - memoize to prevent recreation
-  const { startDate, endDate } = useMemo(() => {
-    const start = new Date();
-    const end = new Date();
-    end.setMonth(end.getMonth() + 3);
+  // Compute the visible month range for the timebox query
+  const { monthStart, monthEnd } = useMemo(() => {
+    const start = startOfMonth(focusedDate);
+    const end = endOfMonth(focusedDate);
     return {
-      startDate: start.toISOString().split("T")[0],
-      endDate: end.toISOString().split("T")[0],
+      monthStart: start.toString(),
+      monthEnd: end.toString(),
     };
-  }, []);
+  }, [focusedDate]);
 
-  const { data: timeboxes = [], isLoading } = useTimeboxesForDateRange(
+  const { data: timeboxes = [] } = useTimeboxesForDateRange(
     user?.id || "",
-    startDate,
-    endDate,
+    monthStart,
+    monthEnd,
   );
+
+  // Build a set of dates that have timeboxes for dot indicators
+  const datesWithTimeboxes = useMemo(() => {
+    const dateSet = new Set<string>();
+    timeboxes.forEach((timebox) => {
+      dateSet.add(timebox.date);
+    });
+    return dateSet;
+  }, [timeboxes]);
 
   const createNoteMutation = useCreateNote();
   const createTimeboxMutation = useCreateTimebox();
 
-  const buildDateTree = useCallback(
-    (
-      startDateStr: string,
-      endDateStr: string,
-      dateCount: Record<string, number>,
-    ): DateNode[] => {
-      const tree: DateNode[] = [];
-      const current = new Date(startDateStr);
-      const end = new Date(endDateStr);
+  const calendarValue = useMemo(() => {
+    try {
+      return parseDate(selectedDate);
+    } catch {
+      return todayDate;
+    }
+  }, [selectedDate, todayDate]);
 
-      while (current <= end) {
-        const year = current.getFullYear().toString();
-        const monthNum = current.getMonth();
-        const monthKey = `${year}-${String(monthNum + 1).padStart(2, "0")}`;
-        const monthLabel = current.toLocaleDateString("en-US", {
-          month: "long",
-        });
-        const dateKey = current.toISOString().split("T")[0];
-        const dateLabel = current.toLocaleDateString("en-US", {
-          day: "numeric",
-          weekday: "short",
-        });
+  const handleCalendarChange = (date: CalendarDate) => {
+    onDateSelect(date.toString());
+  };
 
-        // Find or create year node
-        let yearNode = tree.find((n) => n.value === year);
-        if (!yearNode) {
-          yearNode = { type: "year", value: year, label: year, children: [] };
-          tree.push(yearNode);
-        }
-
-        // Find or create month node
-        let monthNode = yearNode.children?.find((n) => n.value === monthKey);
-        if (!monthNode) {
-          monthNode = {
-            type: "month",
-            value: monthKey,
-            label: monthLabel,
-            children: [],
-          };
-          yearNode.children?.push(monthNode);
-        }
-
-        // Add date node
-        const count = dateCount[dateKey] || 0;
-        monthNode.children?.push({
-          type: "date",
-          value: dateKey,
-          label: dateLabel,
-          count,
-        });
-
-        current.setDate(current.getDate() + 1);
-      }
-
-      return tree;
-    },
-    [],
-  );
-
-  // Build date tree from timeboxes data
-  const dateTree = useMemo(() => {
-    // Group timeboxes by date
-    const dateCount: Record<string, number> = {};
-    timeboxes.forEach((timebox) => {
-      dateCount[timebox.date] = (dateCount[timebox.date] || 0) + 1;
-    });
-
-    // Build tree structure
-    return buildDateTree(startDate, endDate, dateCount);
-  }, [timeboxes, startDate, endDate, buildDateTree]);
-
-  const toggleNode = (nodeValue: string) => {
-    setExpandedNodes((prev) => {
-      const next = new Set(prev);
-      if (next.has(nodeValue)) {
-        next.delete(nodeValue);
-      } else {
-        next.add(nodeValue);
-      }
-      return next;
-    });
+  const handleGoToToday = () => {
+    setFocusedDate(todayDate);
+    onDateSelect(todayDate.toString());
   };
 
   const createNewNote = async () => {
     if (!user?.id) return;
 
     try {
-      // Create a new note for tomorrow by default
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const tomorrowDate = tomorrow.toISOString().split("T")[0];
@@ -150,7 +102,6 @@ export function Sidebar({ selectedDate, onDateSelect }: SidebarProps) {
         content: "",
       });
 
-      // Create a default timebox for the note (9 AM - 10 AM)
       await createTimeboxMutation.mutateAsync({
         user_id: user.id,
         note_id: note.id,
@@ -159,58 +110,15 @@ export function Sidebar({ selectedDate, onDateSelect }: SidebarProps) {
         end_time: "10:00:00",
       });
 
-      // Select the date where the note was created
       onDateSelect(selectedDate || tomorrowDate);
     } catch (error) {
       console.error("Error creating note:", error);
     }
   };
 
-  const renderTree = (nodes: DateNode[], level = 0) => {
-    return nodes.map((node) => {
-      const isExpanded = expandedNodes.has(node.value);
-      const isSelected = node.type === "date" && node.value === selectedDate;
-      const hasChildren = node.children && node.children.length > 0;
-
-      return (
-        <div key={node.value} style={{ paddingLeft: `${level * 16}px` }}>
-          <button
-            onClick={() => {
-              if (node.type === "date") {
-                onDateSelect(node.value);
-              } else if (hasChildren) {
-                toggleNode(node.value);
-              }
-            }}
-            className={`w-full text-left px-3 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors ${
-              isSelected
-                ? "bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300"
-                : "text-gray-700 dark:text-gray-300"
-            }`}
-          >
-            {hasChildren && (
-              <ChevronRight
-                className={`w-4 h-4 transition-transform ${isExpanded ? "rotate-90" : ""}`}
-              />
-            )}
-            {!hasChildren && <span className="w-4" />}
-            <span className="flex-1 font-medium">{node.label}</span>
-            {node.count !== undefined && node.count > 0 && (
-              <span className="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full">
-                {node.count}
-              </span>
-            )}
-          </button>
-          {isExpanded && hasChildren && (
-            <div>{renderTree(node.children!, level + 1)}</div>
-          )}
-        </div>
-      );
-    });
-  };
-
   return (
     <div className="h-full flex flex-col">
+      {/* New Note button */}
       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
         <Button
           onPress={createNewNote}
@@ -221,16 +129,94 @@ export function Sidebar({ selectedDate, onDateSelect }: SidebarProps) {
         </Button>
       </div>
 
+      {/* Calendar */}
       <div className="flex-1 overflow-y-auto p-4">
-        {isLoading ? (
-          <p className="text-center text-gray-500 dark:text-gray-400">
-            Loading...
-          </p>
-        ) : dateTree.length > 0 ? (
-          renderTree(dateTree)
-        ) : (
-          <p className="text-center text-gray-500 dark:text-gray-400">
-            No notes yet. Create your first note!
+        <Calendar
+          aria-label="Date picker"
+          value={calendarValue}
+          onChange={handleCalendarChange}
+          focusedValue={focusedDate}
+          onFocusChange={setFocusedDate}
+          className="w-full"
+        >
+          {/* Calendar header: prev / month-year / next */}
+          <header className="flex items-center justify-between mb-4">
+            <Button
+              slot="previous"
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+            <Heading className="text-sm font-semibold text-gray-900 dark:text-white" />
+            <Button
+              slot="next"
+              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </Button>
+          </header>
+
+          {/* Today button */}
+          <div className="flex justify-center mb-3">
+            <button
+              type="button"
+              onClick={handleGoToToday}
+              className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+            >
+              Today
+            </button>
+          </div>
+
+          {/* Calendar grid */}
+          <CalendarGrid className="w-full border-collapse">
+            <CalendarGridHeader>
+              {(day) => (
+                <CalendarHeaderCell className="text-xs font-medium text-gray-500 dark:text-gray-400 pb-2 text-center w-10 h-10">
+                  {day}
+                </CalendarHeaderCell>
+              )}
+            </CalendarGridHeader>
+            <CalendarGridBody>
+              {(date) => (
+                <CalendarCell
+                  date={date}
+                  className={({ isSelected, isDisabled, isFocusVisible }) =>
+                    `relative flex flex-col items-center justify-center w-10 h-10 rounded-full text-sm cursor-pointer transition-colors outline-none
+                    ${
+                      isSelected
+                        ? "bg-blue-600 text-white font-semibold"
+                        : isDisabled
+                          ? "text-gray-300 dark:text-gray-600 cursor-default"
+                          : date.compare(todayDate) === 0
+                            ? "font-semibold text-blue-600 dark:text-blue-400 ring-1 ring-blue-400 dark:ring-blue-500"
+                            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                    }
+                    ${isFocusVisible ? "ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-gray-800" : ""}
+                  `
+                  }
+                >
+                  {({ formattedDate }) => (
+                    <>
+                      <span>{formattedDate}</span>
+                      {datesWithTimeboxes.has(date.toString()) && (
+                        <span className="absolute bottom-0.5 w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      )}
+                    </>
+                  )}
+                </CalendarCell>
+              )}
+            </CalendarGridBody>
+          </CalendarGrid>
+        </Calendar>
+
+        {/* Timebox count for selected date */}
+        {datesWithTimeboxes.has(selectedDate) && (
+          <p className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+            {timeboxes.filter((t) => t.date === selectedDate).length} timebox
+            {timeboxes.filter((t) => t.date === selectedDate).length !== 1
+              ? "es"
+              : ""}{" "}
+            scheduled
           </p>
         )}
       </div>
